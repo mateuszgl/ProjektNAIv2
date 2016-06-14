@@ -292,12 +292,12 @@ int main( int argc, char *args[] )
     Game game;
     Agent agentO;
     
-    agentO.p.push_back(200);
-    agentO.p.push_back(100);
+    agentO.p.push_back(10);
+    agentO.p.push_back(10);
     agentO.v.push_back(0);
     agentO.v.push_back(0);
-    agentO.currentTarget.push_back(200);
-    agentO.currentTarget.push_back(200);
+    agentO.currentTarget.push_back(20);
+    agentO.currentTarget.push_back(20);
     
     game.init();
 	game.world.agents.push_back(agentO);
