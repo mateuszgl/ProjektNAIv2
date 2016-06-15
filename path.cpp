@@ -156,7 +156,7 @@ public:
         t.y = (int)(ty+0.5);
         if (searchPath(p, t, visited, path, world)) {
             cout << "znalazlem trase" << path.size() << endl;
-            cout << "punkt(" << t.x << "," << t.y << ") koloru: (czarny=1)" << world.get(tx,ty)<<endl;
+            cout << "punkt(" << t.x << "," << t.y << ") w kolorze: " << world.get(tx,ty)<<endl;
         } else {
             cout << "brak trasy" << endl;
         }
@@ -172,7 +172,7 @@ public:
 
     vector<PathElement> getPath() {
         return path;
-    }
+	}
 
     // krok co dt - czas
     void step(double dt, World &world) {
@@ -257,7 +257,7 @@ public:
         // czyszczenie ekranu
         SDL_FillRect( _window, NULL, SDL_MapRGB( _window->format, 0x00, 0x00, 0x00 ) );
         // narysowanie mapy
-        ///*
+        /*
 
         for (int x = 0; x < world.w; x++) {
             for (int y = 0; y < world.h; y++) {
@@ -267,10 +267,10 @@ public:
                 else blit("grass",x,y);
             }
         }
-        //*/
+        */
          
          
-         //blit("map",0,0,tiles["map"]->w, tiles["map"]->h);
+         blit("map",0,0,tiles["map"]->w, tiles["map"]->h);
         
         
         
@@ -279,10 +279,10 @@ public:
         //   blit("dot",player.getPath()[i].x,player.getPath()[i].y);
         //narysowanie celu
         if (player.getPath().size() > 0)
-            blit("cross",player.getPath().back().x*32,player.getPath().back().y*32);
+            blit("cross",player.getPath().back().x,player.getPath().back().y);
 
         // narysowanie gracza
-        blit("player",player.x()*32.0,player.y()*32.0);
+        blit("player",player.x(),player.y());
         SDL_Flip( _window );
     }
     // obsluga wejscia (klawiatura, mysz)
@@ -336,7 +336,7 @@ public:
     }
 
     void onClick(int x, int y) {
-        player.setTarget((x)/32,(y)/32, world);
+        player.setTarget((x),(y), world);
     }
 } Game;
 
