@@ -1,6 +1,8 @@
 // Program przykładowy przygotowany na zajęcia NAI na PJATK
-// Tadeusz Puźniakowski, 2016
+// Tadeusz Puźniakowski, 2015
 
+// polecam http://lazyfoo.net/SDL_tutorials/
+// polecam tutorial http://www.moosader.com/old-pages/tutorials/beginners-guide-to-game-programming-sdl-1-2/
 #include "SDL/SDL.h"
 #include <vector>
 #include <iostream>
@@ -8,167 +10,204 @@
 #include <set>
 #include <cmath>
 #include <fstream>
-#include <cassert>
-#include "helpers.hpp"
-
 using namespace std;
 
-
-
-
-class World;
-vector < vector < double > > getCollisionPoints(SDL_Surface *obstacles, vector < double > p, double maxR, double dA = M_PI/100.0);
-
-/******************************************************************
- * W tym miejscu będziemy implementowali sztuczną inteligencję
- * **************************************************************** */
- class Agent {
-	public:
-	
-	vector <double> p; // aktualna pozycja
-	vector <double> v; // wektor predkosci
-	
-	
-	vector <double> dv; // zmiana predkosci
-	vector <double> currentTarget; // aktualny cel
-	
-	void (*ai)(Agent *, SDL_Surface *, vector < Agent > &, double );
-	
-	void updateIntentions(SDL_Surface *obstacles, vector < Agent > &agents, double dt) {
-		if (ai != NULL) ai(this, obstacles, agents, dt);
-		else {
-			auto cp = getCollisionPoints(obstacles, p, 100, M_PI/18);
-			vector < double > newDv(2);
-
-			for (int i = 0; i < cp.size(); i++) {
-				auto colisionVector = p - cp[i];
-				double l = norm(colisionVector);
-				colisionVector = colisionVector / l;
-				newDv = newDv + colisionVector*2000/(l*l);
-			}
-			
-			
-			for (int i = 0; i < agents.size(); i++) {
-				auto colisionVector = p - agents[i].p;
-				double l = norm(colisionVector);
-				colisionVector = colisionVector / l;
-				newDv = newDv + colisionVector*10000/(l*l);
-			}
-			
-			
-			
-			dv = currentTarget - p;
-			if (norm(dv) > 0) dv = (dv/norm(dv))*100;
-			dv = dv + newDv;
-		}
-	}
-	
-	Agent() {
-		ai = NULL;
-	};
-};
-
-
-
-
-class World {
+typedef class World {
 public:
-	SDL_Surface *obstacles;
-	vector < Agent > agents;
-
-	// aktualizacja intencji -- wykonanie AI dla kazdego agenta
-	void ai(double dt, World &w) {
-		#pragma omp parallel for
-		for (int i = 0; i < agents.size(); i++) {
-			vector < Agent > agents0;
-			for (int j = 0; j < agents.size(); j++) {
-				if (j != i) {
-					int collision = 0;
-					auto vec =  agents[j].p - agents[i].p;
-					vec = vec / norm(vec);
-					auto p = agents[i].p;
-					
-					for (;norm(agents[j].p-p) > 1; p = p + vec) {
-						if (getpixel(obstacles, p[0],p[1]) < 128) {
-							collision = 1;
-							break;
-						}
-					}
-					if (collision == 0) {
-						agents0.push_back(agents[j]);
-					}
-				}
-			}
-			//agents0.erase (agents0.begin()+i);
-			#pragma omp critical
-			agents[i].updateIntentions(obstacles, agents0, dt);
-		}
-	}
-
-	// obliczenia fizyki
-	void move(double dt, World &w) {
-		// korekta wartosci (nie mozna przekroczyc maksymalnego przyspieszenia)
-		for (int i = 0; i < agents.size(); i++) {
-			if (norm(agents[i].dv) > 100) 
-				agents[i].dv = (agents[i].dv/norm(agents[i].dv))*100;
-		}
-
-		// sily i predkosci
-		for (int i = 0; i < agents.size(); i++) {
-			agents[i].v = agents[i].v + agents[i].dv*dt;
-		}
-		
-		// opory
-		for (int i = 0; i < agents.size(); i++) {
-			agents[i].v = agents[i].v - agents[i].v*0.4*dt;
-		}
-		// aktualizacja pozycji
-		for (int i = 0; i < agents.size(); i++) {
-			auto newPos = agents[i].p + agents[i].v*dt;
-			if (getpixel(obstacles, newPos[0], newPos[1])) {
-				agents[i].p = newPos;
-			} else {
-				agents[i].v[0] = 0;
-				agents[i].v[1] = 0;
-			}
-			
-		}
-	}
-	
-	vector <Agent> &getAgents() {
-		return agents;
-	}
-};
+    vector<int> area; // obszar mapy
+    int w=640, h=480;
+    // konstruktor tworzy mape na podstawie pliku
+    // plik jest w formacie:
+    // w h
+    // kolejne liczby oznaczajace rodzaje kafelkow. 0 - biale, 1 - czarne(przeszkoda)
+    
+    World(string mapfilename = "map.txt") {
+        string line;
+        ifstream myfile (mapfilename);
+        myfile >> w;
+        myfile >> h;
+        cout << "Mapa rozmiaru " << w << " na " << h << endl;
+        area.resize(w*h);
+        for (int i = 0; i < w*h; i++) myfile >> (area[i]);
+        myfile.close();
+    }
 
 
-// sprawdza punkty kolizji
-vector < vector < double > > getCollisionPoints(SDL_Surface *obstacles, vector < double > p, double maxR, double dA) {
-	vector < vector < double > > ret;
-	// skanujemy dookola w poszukiwaniu przeszkod
-	for (double a = -M_PI; a < M_PI; a+= dA) {
-		auto v = angleConvert(a);
-		for (double r = 1.5; r <= maxR; r+= 1) {
-			auto pp = p + v*r;
-			if (getpixel(obstacles,pp[0], pp[1]) < 128) {// przeszkoda
-				ret.push_back (pp);
-				r = maxR;
-			}
-		}
-	}
-	return ret;
+	load("map", "map.bmp");
+
+
+
+    int get(int x, int y) const {
+        return area[y*w+x];
+    }
+
+    int canWalk(int x, int y) const {
+        if (x < 0) return 0;
+        if (y < 0) return 0;
+        if (x >= w) return 0;
+        if (y >= h) return 0;
+        return (area[y*w+x] == 0);
+    }
+} World;
+
+typedef class PathElement {
+public:
+    int x, y;
+    PathElement(int xx = 0, int yy = 0) {
+        x = xx;
+        y = yy;
+    }
+    bool operator() (const PathElement& lhs, const PathElement& rhs) const {
+        return (lhs.y*1000+lhs.x)<(rhs.y*1000+rhs.x);
+    }
+} PathElement;
+inline bool operator==(const PathElement& lhs, const PathElement& rhs) {
+    return (lhs.x == rhs.x) && (lhs.y == rhs.y);
+}
+inline bool operator!=(const PathElement& lhs, const PathElement& rhs) {
+    return !(lhs == rhs);
 }
 
+typedef class Player {
+    double _x, _y;
 
-const int _FINISHED = 1;
-const int _GAME = 2;
+    vector<PathElement> path;
+    int pathIndex = 0;
 
-class Game {
+public:
+
+    double h(PathElement p, PathElement dest) {
+        return sqrt(
+                   (dest.y-p.y)*(dest.y-p.y) +
+                   (dest.x-p.x)*(dest.x-p.x));
+    }
+
+    // TU IMPLEMENTACJA WYZNACZANIA TRASY!!!
+    // p - punkt startu,
+    // t - punkt docelowy,
+    // visited - lista odwiedzonych
+    // path - wygenerowana trasa
+    // world - swiat (mapa)
+    int searchPath (PathElement start, PathElement goal, vector <int> &visited,
+                    vector<PathElement> &path, World &world) {
+
+        set<PathElement, PathElement> closedSet;
+        set<PathElement, PathElement> openSet;
+        map<PathElement, PathElement, PathElement> came_from;
+        map<PathElement, double, PathElement> g_score;
+        map<PathElement, double, PathElement> f_score;
+
+        openSet.insert(start);
+        g_score[start] = 0;
+        f_score[start] = 0 + h(start, goal);
+
+        while (openSet.size() > 0) {
+            // szukamy z openSet tego o najnizszym f_score
+            std::set<PathElement>::iterator it = openSet.begin();
+            PathElement best = *it, toCheck;
+            for ( ; it!=openSet.end(); ++it) {
+                if (f_score[best] >	f_score[*it]) best = *it;
+            }
+
+            if (best == goal) {
+                vector<PathElement> pathInvert;
+                PathElement current = goal;
+                pathInvert.push_back(current);
+                while (came_from.count(current) > 0) {
+                    current = came_from[current];
+                    pathInvert.push_back(current);
+                }
+                for (; pathInvert.size() > 0; pathInvert.pop_back()) {
+                    path.push_back(pathInvert.back());
+                }
+                return 1; //path;
+            }
+
+            openSet.erase(best);
+            closedSet.insert(best);
+
+            for (int i = 0; i < 4; i++) {
+                toCheck.x = best.x + (((i&2)>>1)*2-1)  *   (1-(i&1));
+                toCheck.y = best.y + (((i&2)>>1)*2-1)  *      (i&1);
+
+                if ((world.canWalk(toCheck.x, toCheck.y)) && (closedSet.count(toCheck) == 0)) {
+                    double t_g_score = g_score[best] + h(toCheck,best);
+                    openSet.insert(toCheck);
+                    if (g_score.count(toCheck) == 0) g_score[toCheck] = 999999999;
+                    if (t_g_score < g_score[toCheck]) {
+                        came_from[toCheck] = best;
+                        g_score[toCheck] = t_g_score;
+                        f_score[toCheck] = g_score[toCheck] + h(toCheck, goal);
+                    }
+
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    void setTarget(double tx, double ty, World &world ) {
+        PathElement p, t;
+        pathIndex = 0;
+        vector <int> visited;
+        visited.resize(world.w*world.h);
+        for (unsigned i = 0; i < visited.size(); i++) visited[i] = 0;
+
+        path.clear();
+        p.x = (int)(_x+0.5);
+        p.y = (int)(_y+0.5);
+        t.x = (int)(tx+0.5);
+        t.y = (int)(ty+0.5);
+        if (searchPath(p, t, visited, path, world)) {
+            cout << "znalazlem trase" << path.size() << endl;
+        } else {
+            cout << "brak trasy" << endl;
+        }
+    }
+
+    double &x() {
+        return _x;
+    }
+
+    double &y() {
+        return _y;
+    }
+
+    vector<PathElement> getPath() {
+        return path;
+    }
+
+    // krok co dt - czas
+    void step(double dt, World &world) {
+        double speed = 10;
+        if (path.size() > 0) {
+            double v[2] = {(((double)path[pathIndex].x)) - _x, (((double)path[pathIndex].y)) - _y};
+            double l = sqrt (v[0]*v[0]+v[1]*v[1]);
+            if (dt*speed < l) {
+                if (world.canWalk(_x + dt*speed*v[0]/l+0.5,_y+0.5))
+                    _x += dt*speed*v[0]/l;
+                if (world.canWalk(_x+0.5,_y + dt*speed*v[1]/l+0.5))
+                    _y += dt*speed*v[1]/l;
+            }
+            if (pathIndex < path.size()-1) {
+                if (l < 0.3) pathIndex++;
+            }
+        }
+    }
+} Player;
+
+typedef class Game {
 public:
     SDL_Surface *_window;
+    int _state;
+    static const int _GAME;
+    static const int _FINISHED;
+    static const int _LOADING;
+    Player player;
     World world;
     map<string,SDL_Surface*> tiles;
     unsigned long int lastTick;
-    int _state;
 
     // laduje obrazek (kafelek)
     void load(string name, string filename) {
@@ -187,22 +226,27 @@ public:
     }
     // inicjalizacja "gry"
     void init() {
+        _state = _LOADING;
         SDL_Init( SDL_INIT_EVERYTHING );
-        _window = SDL_SetVideoMode( 640, 480, 32, SDL_SWSURFACE );
-        SDL_WM_SetCaption( "NAI - PFN", NULL );
+        _window = SDL_SetVideoMode( 640, 480, 0, SDL_SWSURFACE );
+        SDL_WM_SetCaption( "NAI - wyszukiwanie trasy", NULL );
         load("player", "player.bmp" );
-        //load("water", "water.bmp" );
-        load("map", "map.bmp" );
-        load("cross", "cross.bmp" );
-        lastTick = SDL_GetTicks(); // w milisekundach
+        load("water", "czarny.bmp" );
+        load("grass", "bialy.bmp" );
+        load("dot", "cross.bmp" );
+        load("cross", "cross2.bmp" );
+        player.x() = player.y() = 3;
+        player.setTarget(16,8,world);
         _state = _GAME;
-        world.obstacles = tiles["map"];
-
+        lastTick = SDL_GetTicks(); // w milisekundach
     }
     // umieszcza zadany obrazek na ekranie na zadanych wspolrzednych
     void blit(string elem, int x = 0, int y = 0, int w = 32, int h = 32) {
         SDL_Rect dst;
-        dst.x = x; dst.y = y; dst.w = w; dst.h = h;
+        dst.x = x;
+        dst.y = y;
+        dst.w = w;
+        dst.h = h;
         SDL_BlitSurface( tiles[elem] , NULL, _window, &dst );
     }
 
@@ -211,21 +255,21 @@ public:
         // czyszczenie ekranu
         SDL_FillRect( _window, NULL, SDL_MapRGB( _window->format, 0x00, 0x00, 0x00 ) );
         // narysowanie mapy
-        blit("map",0,0,tiles["map"]->w, tiles["map"]->h);
+        for (int x = 0; x < world.w; x++) {
+            for (int y = 0; y < world.h; y++) {
+                if (world.get(x,y) == 1) blit("water",x,y);
+                else blit("grass",x,y);
+            }
+        }
+        // narysowanie sciezki
+       // for (unsigned i = 0; i < player.getPath().size(); i++)
+        //   blit("dot",player.getPath()[i].x,player.getPath()[i].y);
+        //narysowanie celu
+        if (player.getPath().size() > 0)
+            blit("cross",player.getPath().back().x*32,player.getPath().back().y*32);
 
-		blit("cross",world.agents[0].currentTarget[0]-16,world.agents[0].currentTarget[1]-16);
-        
-        for (int i = 0; i < world.agents.size(); i++) {
-			blit("player",world.agents[i].p[0]-16,world.agents[i].p[1]-16);
-		}
-		
-		auto cp = getCollisionPoints(world.obstacles, world.agents[0].p, 100, M_PI/18);
-		for (int i = 0; i < cp.size(); i ++) {
-			blit("cross",cp[i][0]-16,cp[i][1]-16);
-		}
-		
-
-        //blit("player",player.x()-16,player.y()-16);
+        // narysowanie gracza
+        blit("player",player.x()*32.0,player.y()*32.0);
         SDL_Flip( _window );
     }
     // obsluga wejscia (klawiatura, mysz)
@@ -253,13 +297,13 @@ public:
 
     // cala "fizyka" gry
     void calculations() {
+        // zmienne fps (maksymalne)
         SDL_Delay( 1 ); // #pcmasterrace
         unsigned long int now = SDL_GetTicks();
         double dt= (double)(now - lastTick)/1000.0;
         lastTick = now;
-        world.ai(dt,world);
-        world.move(dt,world);
-        //player.step(dt, world);
+        // aktualizacja o dt - liczenie ''fizyki''
+        player.step(dt, world);
     }
 
     // funkcja wywolywana przed zamknieciem programu
@@ -279,36 +323,19 @@ public:
     }
 
     void onClick(int x, int y) {
-		for (int i = 0; i < world.agents.size(); i++) {
-			world.agents[i].currentTarget[0] = x;
-			world.agents[i].currentTarget[1] = y;
-		}
+        player.setTarget((x)/32,(y)/32, world);
     }
-};
+} Game;
 
+const int Game::_GAME = 0;
+const int Game::_FINISHED = 1;
+const int Game::_LOADING = 2;
 
 int main( int argc, char *args[] )
 {
     Game game;
-    Agent agentO;
-    
-    agentO.p.push_back(10);
-    agentO.p.push_back(10);
-    agentO.v.push_back(0);
-    agentO.v.push_back(0);
-    agentO.currentTarget.push_back(20);
-    agentO.currentTarget.push_back(20);
-    
     game.init();
-	game.world.agents.push_back(agentO);
-
-	for (int i = 0; i < 0; i ++) {
-		agentO.p[0] = 202+i;
-		agentO.p[1] = 100;
-		game.world.agents.push_back(agentO);
-	}
-	
-    while (game.state() == _GAME) {
+    while (game.state() == game._GAME) {
         game.input();
         game.display();
         game.calculations();
