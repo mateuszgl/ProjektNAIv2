@@ -27,7 +27,7 @@ public:
 			area[i*w+j]=1;
 			else area[i*w+j]=0;
 			
-			if (j%640==0)i++;
+			if (j%w==0)i++;
 		}	
     }
 
@@ -228,8 +228,7 @@ public:
         SDL_WM_SetCaption( "NAI - wyszukiwanie trasy", NULL );
         load("player", "player.bmp" );
         load("czarny", "czarny.bmp" );
-        load("grass", "bialy.bmp" );
-        //load("dot", "cross.bmp" );
+        load("bialy", "bialy.bmp" );
         load("cross", "cross.bmp" );
         
         //ladowanie pliku mapy
@@ -256,6 +255,7 @@ public:
     void display() {
         // czyszczenie ekranu
         SDL_FillRect( _window, NULL, SDL_MapRGB( _window->format, 0x00, 0x00, 0x00 ) );
+       
         // narysowanie mapy
         /*
 
@@ -264,7 +264,7 @@ public:
                 if (world.get(x,y) == 1){ 
 					blit("czarny",x,y);
 					}
-                else blit("grass",x,y);
+                else blit("bialy",x,y);
             }
         }
         */
