@@ -13,8 +13,7 @@ public:
     vector<int> area; // obszar mapy
     int w=640, h=480;
     SDL_Surface *obstacles;
-    World() {
-        
+    void createMap(){
         cout << "Mapa rozmiaru " << w << " na " << h << endl;
         area.resize(w*h);
        
@@ -22,18 +21,16 @@ public:
 		for (int i = 0; i < h;)
         for (int j = 0; j < w; j++)
         { 
-			//if (getpixel(obstacles,j,i)<128)
+			//if (obstacles == NULL) cout<<"cos nie tak"<<endl;
+			if (getpixel(obstacles,j,i) < 128)
 			//przeszkoda na mapie zaznaczona kolerem czarnym
-			//area[i*w+j]=1;
-			//else
+			area[i*w+j]=1;
+			else
 			area[i*w+j]=0;
 			if (j%640==0)i++;
-		}
-		
-		
+		}	
 	
     }
-
 
 
     int get(int x, int y) const {
@@ -238,8 +235,8 @@ public:
         //ladowanie pliku mapy
        load("map","map.bmp");
        world.obstacles = tiles["map"];
-        
-        
+	   world.createMap();
+		
         player.x() = player.y() = 3;
         player.setTarget(3,3,world);
         _state = _GAME;
