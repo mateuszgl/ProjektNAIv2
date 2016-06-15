@@ -25,13 +25,11 @@ public:
 			if (getpixel(obstacles,j,i) < 128)
 			//przeszkoda na mapie zaznaczona kolerem czarnym
 			area[i*w+j]=1;
-			else
-			area[i*w+j]=0;
+			else area[i*w+j]=0;
+			
 			if (j%640==0)i++;
 		}	
-	
     }
-
 
     int get(int x, int y) const {
         return area[y*w+x];
@@ -42,6 +40,7 @@ public:
         if (y < 0) return 0;
         if (x >= w) return 0;
         if (y >= h) return 0;
+       if (getpixel(obstacles,x,y) < 128) return 0;
         return (area[y*w+x] == 0);
     }
 } World;
@@ -157,6 +156,7 @@ public:
         t.y = (int)(ty+0.5);
         if (searchPath(p, t, visited, path, world)) {
             cout << "znalazlem trase" << path.size() << endl;
+            cout << "punkt(" << t.x << "," << t.y << ") koloru: (czarny=1)" << world.get(tx,ty)<<endl;
         } else {
             cout << "brak trasy" << endl;
         }
@@ -227,7 +227,7 @@ public:
         _window = SDL_SetVideoMode( 640, 480, 0, SDL_SWSURFACE );
         SDL_WM_SetCaption( "NAI - wyszukiwanie trasy", NULL );
         load("player", "player.bmp" );
-        load("water", "czarny.bmp" );
+        load("czarny", "czarny.bmp" );
         load("grass", "bialy.bmp" );
         //load("dot", "cross.bmp" );
         load("cross", "cross.bmp" );
@@ -257,12 +257,23 @@ public:
         // czyszczenie ekranu
         SDL_FillRect( _window, NULL, SDL_MapRGB( _window->format, 0x00, 0x00, 0x00 ) );
         // narysowanie mapy
+        ///*
+
         for (int x = 0; x < world.w; x++) {
             for (int y = 0; y < world.h; y++) {
-                if (world.get(x,y) == 1) blit("water",x,y);
+                if (world.get(x,y) == 1){ 
+					blit("czarny",x,y);
+					}
                 else blit("grass",x,y);
             }
         }
+        //*/
+         
+         
+         //blit("map",0,0,tiles["map"]->w, tiles["map"]->h);
+        
+        
+        
         // narysowanie sciezki
        // for (unsigned i = 0; i < player.getPath().size(); i++)
         //   blit("dot",player.getPath()[i].x,player.getPath()[i].y);
