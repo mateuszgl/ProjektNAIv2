@@ -1,8 +1,3 @@
-// Program przykładowy przygotowany na zajęcia NAI na PJATK
-// Tadeusz Puźniakowski, 2015
-
-// polecam http://lazyfoo.net/SDL_tutorials/
-// polecam tutorial http://www.moosader.com/old-pages/tutorials/beginners-guide-to-game-programming-sdl-1-2/
 #include "SDL/SDL.h"
 #include <vector>
 #include <iostream>
@@ -10,30 +5,34 @@
 #include <set>
 #include <cmath>
 #include <fstream>
+#include "helpers.hpp"
 using namespace std;
 
 typedef class World {
 public:
     vector<int> area; // obszar mapy
     int w=640, h=480;
-    // konstruktor tworzy mape na podstawie pliku
-    // plik jest w formacie:
-    // w h
-    // kolejne liczby oznaczajace rodzaje kafelkow. 0 - biale, 1 - czarne(przeszkoda)
-    
-    World(string mapfilename = "map.txt") {
-        string line;
-        ifstream myfile (mapfilename);
-        myfile >> w;
-        myfile >> h;
+    SDL_Surface *obstacles;
+    World() {
+        
         cout << "Mapa rozmiaru " << w << " na " << h << endl;
         area.resize(w*h);
-        for (int i = 0; i < w*h; i++) myfile >> (area[i]);
-        myfile.close();
+       
+       //tworzenie mapy z obrazka
+		for (int i = 0; i < h;)
+        for (int j = 0; j < w; j++)
+        { 
+			//if (getpixel(obstacles,j,i)<128)
+			//przeszkoda na mapie zaznaczona kolerem czarnym
+			//area[i*w+j]=1;
+			//else
+			area[i*w+j]=0;
+			if (j%640==0)i++;
+		}
+		
+		
+	
     }
-
-
-	load("map", "map.bmp");
 
 
 
@@ -233,10 +232,16 @@ public:
         load("player", "player.bmp" );
         load("water", "czarny.bmp" );
         load("grass", "bialy.bmp" );
-        load("dot", "cross.bmp" );
-        load("cross", "cross2.bmp" );
+        //load("dot", "cross.bmp" );
+        load("cross", "cross.bmp" );
+        
+        //ladowanie pliku mapy
+       load("map","map.bmp");
+       world.obstacles = tiles["map"];
+        
+        
         player.x() = player.y() = 3;
-        player.setTarget(16,8,world);
+        player.setTarget(3,3,world);
         _state = _GAME;
         lastTick = SDL_GetTicks(); // w milisekundach
     }
