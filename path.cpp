@@ -11,23 +11,33 @@ using namespace std;
 typedef class World {
 public:
     vector<int> area; // obszar mapy
-    int w=640, h=480;
+    int w=20, h=16;
     SDL_Surface *obstacles;
+    
+    World(){
+		area.resize(w*h);
+	}
+    
     void createMap(){
         cout << "Mapa rozmiaru " << w << " na " << h << endl;
-        area.resize(w*h);
+       
        
        //tworzenie mapy z obrazka
 		for (int i = 0; i < h;)
         for (int j = 0; j < w; j++)
         { 
-			//if (obstacles == NULL) cout<<"cos nie tak"<<endl;
-			if (getpixel(obstacles,j,i) < 128)
+			if (obstacles == NULL) cout<<"Błąd tworzenia mapy!"<<endl;
+			if (getpixel(obstacles,j,i) < 128){
 			//przeszkoda na mapie zaznaczona kolerem czarnym
 			area[i*w+j]=1;
-			else area[i*w+j]=0;
+		}
+			else 
+			area[i*w+j]=0;
 			
-			if (j%w==0)i++;
+			if (j%w==w-1){
+				cout<<"nowa linia"<<endl;
+				i++;
+			}
 		}	
     }
 
@@ -40,11 +50,10 @@ public:
         if (y < 0) return 0;
         if (x >= w) return 0;
         if (y >= h) return 0;
-       if (getpixel(obstacles,x,y) < 128) return 0;
+       //if (getpixel(obstacles,x,y) < 128) return 0;
         return (area[y*w+x] == 0);
     }
 } World;
-
 typedef class PathElement {
 public:
     int x, y;
@@ -155,10 +164,9 @@ public:
         t.x = (int)(tx+0.5);
         t.y = (int)(ty+0.5);
         if (searchPath(p, t, visited, path, world)) {
-            cout << "znalazlem trase" << path.size() << endl;
-            cout << "punkt(" << t.x << "," << t.y << ") w kolorze: " << world.get(tx,ty)<<endl;
+           cout<<"znaleziono trase do punktu("<<tx<<","<<ty<<") w kolorze: "<<world.get(tx,ty)<<endl;
         } else {
-            cout << "brak trasy" << endl;
+           cout<<"brak trasy do punktu("<<tx<<","<<ty<<") w kolorze: "<<world.get(tx,ty)<<endl;
         }
     }
 
@@ -172,7 +180,7 @@ public:
 
     vector<PathElement> getPath() {
         return path;
-	}
+    }
 
     // krok co dt - czas
     void step(double dt, World &world) {
@@ -224,20 +232,23 @@ public:
     void init() {
         _state = _LOADING;
         SDL_Init( SDL_INIT_EVERYTHING );
-        _window = SDL_SetVideoMode( 640, 480, 0, SDL_SWSURFACE );
+        _window = SDL_SetVideoMode( 640, 480, 32, SDL_SWSURFACE );
         SDL_WM_SetCaption( "NAI - wyszukiwanie trasy", NULL );
         load("player", "player.bmp" );
-        load("czarny", "czarny.bmp" );
-        load("bialy", "bialy.bmp" );
+        load("water", "czarny.bmp" );
+        load("grass", "bialy.bmp" );
+        load("dot", "gold.bmp" );
         load("cross", "cross.bmp" );
         
+        
         //ladowanie pliku mapy
-       load("map","map.bmp");
-       world.obstacles = tiles["map"];
-	   world.createMap();
-		
-        player.x() = player.y() = 3;
-        player.setTarget(3,3,world);
+        load("map","map.bmp");
+        world.obstacles = tiles["map"];
+	    world.createMap();
+        
+        player.x() = player.y() = 0;
+        player.setTarget(16,8,world);
+        
         _state = _GAME;
         lastTick = SDL_GetTicks(); // w milisekundach
     }
@@ -255,34 +266,21 @@ public:
     void display() {
         // czyszczenie ekranu
         SDL_FillRect( _window, NULL, SDL_MapRGB( _window->format, 0x00, 0x00, 0x00 ) );
-       
         // narysowanie mapy
-        /*
-
         for (int x = 0; x < world.w; x++) {
             for (int y = 0; y < world.h; y++) {
-                if (world.get(x,y) == 1){ 
-					blit("czarny",x,y);
-					}
-                else blit("bialy",x,y);
+                if (world.get(x,y) == 1) blit("water",x*32,y*32);
+                else blit("grass",x*32,y*32);
             }
         }
-        */
-         
-         
-         blit("map",0,0,tiles["map"]->w, tiles["map"]->h);
-        
-        
-        
         // narysowanie sciezki
-       // for (unsigned i = 0; i < player.getPath().size(); i++)
-        //   blit("dot",player.getPath()[i].x,player.getPath()[i].y);
-        //narysowanie celu
+        //for (unsigned i = 0; i < player.getPath().size(); i++)
+         //   blit("dot",player.getPath()[i].x*32,player.getPath()[i].y*32);
         if (player.getPath().size() > 0)
-            blit("cross",player.getPath().back().x,player.getPath().back().y);
+            blit("cross",player.getPath().back().x*32,player.getPath().back().y*32);
 
         // narysowanie gracza
-        blit("player",player.x(),player.y());
+        blit("player",player.x()*32.0,player.y()*32.0);
         SDL_Flip( _window );
     }
     // obsluga wejscia (klawiatura, mysz)
@@ -336,7 +334,7 @@ public:
     }
 
     void onClick(int x, int y) {
-        player.setTarget((x),(y), world);
+        player.setTarget((x)/32,(y)/32, world);
     }
 } Game;
 
