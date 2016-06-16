@@ -11,7 +11,7 @@ using namespace std;
 typedef class World {
 public:
     vector<int> area; // obszar mapy
-    int w=20, h=16;
+    int w=20, h=15;
     SDL_Surface *obstacles;
     
     World(){
