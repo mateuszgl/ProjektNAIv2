@@ -13,9 +13,11 @@ public:
     vector<int> area; // obszar mapy
     int w=20, h=15;
     SDL_Surface *obstacles;
+    bool haveKey;
     
     World(){
 		area.resize(w*h);
+		haveKey=false;
 	}
     
     void createMap(){
@@ -26,16 +28,32 @@ public:
 		for (int i = 0; i < h;)
         for (int j = 0; j < w; j++)
         { 
-			if (obstacles == NULL) cout<<"Błąd tworzenia mapy!"<<endl;
+			if (obstacles == NULL){
+				 cout<<"Błąd tworzenia mapy!"<<endl;
+				 return;
+			}
 			if (getpixel(obstacles,j,i) < 128){
-			//przeszkoda na mapie zaznaczona kolerem czarnym
-			area[i*w+j]=1;
-		}
+				//przeszkoda na mapie zaznaczona kolerem czarnym
+				area[i*w+j]=1;
+				//cout<<getpixel(obstacles,j,i)<<endl;
+				}
 			else 
-			area[i*w+j]=0;
+			if(getpixel(obstacles,j,i) == 16711680){
+				//cout<<"czerwony"<<endl;  //drzwi
+				area[i*w+j]=2;
+				}
+			else
+			if(getpixel(obstacles,j,i) == 65280){
+				//cout<<"zielony"<<endl;  //klucz
+				area[i*w+j]=3;
+				}
+			else 
+				{
+				area[i*w+j]=0;
+				//cout<<getpixel(obstacles,j,i)<<endl;
+				}
 			
 			if (j%w==w-1){
-				cout<<"nowa linia"<<endl;
 				i++;
 			}
 		}	
@@ -50,8 +68,14 @@ public:
         if (y < 0) return 0;
         if (x >= w) return 0;
         if (y >= h) return 0;
-       //if (getpixel(obstacles,x,y) < 128) return 0;
-        return (area[y*w+x] == 0);
+        if ((area[y*w+x] == 2)&&(haveKey)){
+			return 1;
+		}
+		if ((area[y*w+x] == 2)&&(!haveKey)){
+			//cout<<"Potrzebujesz klucza aby przejść przez drzwi"<<endl;
+			return 0;
+		}
+        return ((area[y*w+x] == 0)||(area[y*w+x] == 3));
     }
 } World;
 typedef class PathElement {
@@ -74,6 +98,7 @@ inline bool operator!=(const PathElement& lhs, const PathElement& rhs) {
 
 typedef class Player {
     double _x, _y;
+    bool haveKey = false;
 
     vector<PathElement> path;
     int pathIndex = 0;
@@ -164,9 +189,9 @@ public:
         t.x = (int)(tx+0.5);
         t.y = (int)(ty+0.5);
         if (searchPath(p, t, visited, path, world)) {
-           cout<<"znaleziono trase do punktu("<<tx<<","<<ty<<") w kolorze: "<<world.get(tx,ty)<<endl;
+           //cout<<"znaleziono trase do punktu("<<tx<<","<<ty<<") w kolorze: "<<world.get(tx,ty)<<endl;
         } else {
-           cout<<"brak trasy do punktu("<<tx<<","<<ty<<") w kolorze: "<<world.get(tx,ty)<<endl;
+           //cout<<"brak trasy do punktu("<<tx<<","<<ty<<") w kolorze: "<<world.get(tx,ty)<<endl;
         }
     }
 
@@ -196,8 +221,24 @@ public:
             }
             if (pathIndex < path.size()-1) {
                 if (l < 0.3) pathIndex++;
+                
+                
+                //cout<<"Potrzebujesz klucza aby przejść przez drzwi"<<endl;
+                if(((world.get(path[pathIndex].x+1,path[pathIndex].y)==2)&&(!world.haveKey))||
+                ((world.get(path[pathIndex].x,path[pathIndex].y+1)==2)&&(!world.haveKey))||
+                ((world.get(path[pathIndex].x-1,path[pathIndex].y)==2)&&(!world.haveKey))||
+                ((world.get(path[pathIndex].x,path[pathIndex].y-1)==2)&&(!world.haveKey)))
+                cout<<"Potrzebujesz klucza aby przejść przez drzwi"<<endl;
+                
+                //jak stanie sie na kluczu to sie go zbiera, klucz znika z mapy
+                if((world.get(path[pathIndex].x,path[pathIndex].y)==3)&&(!world.haveKey)){
+					cout<<"Znalazłeś klucz, możesz przejść przez drzwi."<<endl;
+					world.area[path[pathIndex].y*world.w+path[pathIndex].x]=0;
+					world.haveKey=true;
+				}
             }
         }
+        
     }
 } Player;
 
@@ -235,10 +276,11 @@ public:
         _window = SDL_SetVideoMode( 640, 480, 32, SDL_SWSURFACE );
         SDL_WM_SetCaption( "NAI - wyszukiwanie trasy", NULL );
         load("player", "player.bmp" );
-        load("water", "czarny.bmp" );
-        load("grass", "bialy.bmp" );
-        load("dot", "gold.bmp" );
+        load("wall", "wall.bmp" );
+        load("grass", "grass.bmp" );
         load("cross", "cross.bmp" );
+        load("key", "key.bmp" );
+        load("door", "door.bmp" );
         
         
         //ladowanie pliku mapy
@@ -247,7 +289,7 @@ public:
 	    world.createMap();
         
         player.x() = player.y() = 0;
-        player.setTarget(16,8,world);
+        player.setTarget(0,0,world);
         
         _state = _GAME;
         lastTick = SDL_GetTicks(); // w milisekundach
@@ -269,13 +311,20 @@ public:
         // narysowanie mapy
         for (int x = 0; x < world.w; x++) {
             for (int y = 0; y < world.h; y++) {
-                if (world.get(x,y) == 1) blit("water",x*32,y*32);
+                if (world.get(x,y) == 1) 
+                blit("wall",x*32,y*32);
+                else
+                if (world.get(x,y) == 2) 
+                blit("door",x*32,y*32);
+                else
+                if (world.get(x,y) == 3) 
+                blit("key",x*32,y*32);
                 else blit("grass",x*32,y*32);
             }
         }
         // narysowanie sciezki
         //for (unsigned i = 0; i < player.getPath().size(); i++)
-         //   blit("dot",player.getPath()[i].x*32,player.getPath()[i].y*32);
+        //    blit("dot",player.getPath()[i].x*32,player.getPath()[i].y*32);
         if (player.getPath().size() > 0)
             blit("cross",player.getPath().back().x*32,player.getPath().back().y*32);
 
