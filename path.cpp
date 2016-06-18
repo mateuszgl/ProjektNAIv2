@@ -6,6 +6,8 @@
 #include <cmath>
 #include <fstream>
 #include "helpers.hpp"
+#include <unistd.h>
+
 using namespace std;
 
 typedef class World {
@@ -16,13 +18,13 @@ public:
     bool haveKey;
     
     World(){
-		area.resize(w*h);
+		//area.resize(w*h);
 		haveKey=false;
 	}
     
     void createMap(){
-        cout << "Mapa rozmiaru " << w << " na " << h << endl;
-       
+        //cout << "Mapa rozmiaru " << w << " na " << h << endl;
+       area.resize(w*h);
        
        //tworzenie mapy z obrazka
 		for (int i = 0; i < h;)
@@ -46,6 +48,11 @@ public:
 			if(getpixel(obstacles,j,i) == 65280){
 				//cout<<"zielony"<<endl;  //klucz
 				area[i*w+j]=3;
+				}
+			else 
+			if(getpixel(obstacles,j,i) == 255){
+				//cout<<"niebieski"<<endl;  //skarb
+				area[i*w+j]=4;
 				}
 			else 
 				{
@@ -75,7 +82,7 @@ public:
 			//cout<<"Potrzebujesz klucza aby przejść przez drzwi"<<endl;
 			return 0;
 		}
-        return ((area[y*w+x] == 0)||(area[y*w+x] == 3));
+        return ((area[y*w+x] == 0)||(area[y*w+x] == 3)||(area[y*w+x]==4));
     }
 } World;
 typedef class PathElement {
@@ -223,18 +230,29 @@ public:
                 if (l < 0.3) pathIndex++;
                 
                 
-                //cout<<"Potrzebujesz klucza aby przejść przez drzwi"<<endl;
-                if(((world.get(path[pathIndex].x+1,path[pathIndex].y)==2)&&(!world.haveKey))||
-                ((world.get(path[pathIndex].x,path[pathIndex].y+1)==2)&&(!world.haveKey))||
-                ((world.get(path[pathIndex].x-1,path[pathIndex].y)==2)&&(!world.haveKey))||
-                ((world.get(path[pathIndex].x,path[pathIndex].y-1)==2)&&(!world.haveKey)))
+                //jak staniesz w poblizy drzwi to wyswietli komunikat
+                if((
+                (world.get(path[pathIndex].x+1,path[pathIndex].y)==2) ||
+                (world.get(path[pathIndex].x,path[pathIndex].y+1)==2) ||
+                (world.get(path[pathIndex].x-1,path[pathIndex].y)==2) ||
+                (world.get(path[pathIndex].x,path[pathIndex].y-1)==2) )&& 
+                (!world.haveKey) && (pathIndex==path.size()-1)
+                )
                 cout<<"Potrzebujesz klucza aby przejść przez drzwi"<<endl;
+                
                 
                 //jak stanie sie na kluczu to sie go zbiera, klucz znika z mapy
                 if((world.get(path[pathIndex].x,path[pathIndex].y)==3)&&(!world.haveKey)){
 					cout<<"Znalazłeś klucz, możesz przejść przez drzwi."<<endl;
 					world.area[path[pathIndex].y*world.w+path[pathIndex].x]=0;
 					world.haveKey=true;
+				}
+				
+				//jak stanie sie na na skarbie to wygrywa sie gre
+                if(world.get(path[pathIndex].x,path[pathIndex].y)==4){
+					cout<<"Znalazłeś skarb! KONIEC GRY!"<<endl;
+					sleep(3);
+					exit(0);	
 				}
             }
         }
@@ -281,6 +299,7 @@ public:
         load("cross", "cross.bmp" );
         load("key", "key.bmp" );
         load("door", "door.bmp" );
+        load("gold", "gold.bmp" );
         
         
         //ladowanie pliku mapy
@@ -319,12 +338,17 @@ public:
                 else
                 if (world.get(x,y) == 3) 
                 blit("key",x*32,y*32);
+                else
+                if (world.get(x,y) == 4) 
+                blit("gold",x*32,y*32);
                 else blit("grass",x*32,y*32);
             }
         }
         // narysowanie sciezki
         //for (unsigned i = 0; i < player.getPath().size(); i++)
         //    blit("dot",player.getPath()[i].x*32,player.getPath()[i].y*32);
+       
+		//narysowanie celu
         if (player.getPath().size() > 0)
             blit("cross",player.getPath().back().x*32,player.getPath().back().y*32);
 
