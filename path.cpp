@@ -15,6 +15,7 @@ public:
     vector<int> area; // obszar mapy
     int w=20, h=15;
     SDL_Surface *obstacles;
+    int initX = 0, initY = 0;
     bool haveKey;
     
     World(){
@@ -37,7 +38,6 @@ public:
 			if (getpixel(obstacles,j,i) < 128){
 				//przeszkoda na mapie zaznaczona kolerem czarnym
 				area[i*w+j]=1;
-				//cout<<getpixel(obstacles,j,i)<<endl;
 				}
 			else 
 			if(getpixel(obstacles,j,i) == 16711680){
@@ -53,6 +53,13 @@ public:
 			if(getpixel(obstacles,j,i) == 255){
 				//cout<<"niebieski"<<endl;  //skarb
 				area[i*w+j]=4;
+				}
+			else 
+			if(getpixel(obstacles,j,i) == 65535){
+				//cout<<"morski"<<endl;  //poczatek gry
+				initX = j;
+				initY = i;
+				area[i*w+j]=0;
 				}
 			else 
 				{
@@ -307,8 +314,10 @@ public:
         world.obstacles = tiles["map"];
 	    world.createMap();
         
-        player.x() = player.y() = 0;
-        player.setTarget(0,0,world);
+        //cout<<"X:"<<world.initX<<",Y:"<<world.initY<<endl;
+        player.x() = world.initX;
+        player.y() = world.initY;
+        player.setTarget(world.initX,world.initY,world);
         
         _state = _GAME;
         lastTick = SDL_GetTicks(); // w milisekundach
